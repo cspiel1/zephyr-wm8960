@@ -43,11 +43,21 @@ K_MEM_SLAB_DEFINE(tx_mem_slab, 128, 4, 32);
 /**
  * Sets up the WM8960 as a RTIO IODEV
  *
- * With a DAC input and Headphone Output
+ * @param wm8960 RTIO WM8960 object
+ * @param i2c    I2C device
+ * @param i2s    I2S device
+ * @param srate  Sampling rate in [Hz]
+ * @param ch     Number of channels
+ * @param ptime  Wanted packet-time in [ms]
+ * @param aufmt  Sample format (enum aufmt)
  */
 void wm8960_configure(struct rtio_wm8960 *wm8960,
 		      const struct device *i2c,
-		      const struct device *i2s)
+		      const struct device *i2s,
+		      uint32_t   srate,
+		      uint8_t    ch,
+		      uint32_t   ptime,
+		      int        fmt)
 {
 	int ret;
 	const struct i2s_config* i2s_cfg1;
@@ -72,10 +82,10 @@ void wm8960_configure(struct rtio_wm8960 *wm8960,
 	}
 
 	i2s_cfg.word_size = 16U;
-	i2s_cfg.channels = 2U;
+	i2s_cfg.channels = ch;
 	i2s_cfg.format = I2S_FMT_DATA_FORMAT_I2S;
-	i2s_cfg.frame_clk_freq = 44100;
-	i2s_cfg.block_size = 128;
+	i2s_cfg.frame_clk_freq = srate;
+	i2s_cfg.block_size = srate * ch * ptime / 1000 * 2;
 	i2s_cfg.timeout = 1000;
 	i2s_cfg.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER;
 	i2s_cfg.mem_slab = &tx_mem_slab;

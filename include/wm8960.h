@@ -17,14 +17,18 @@
 #include <zephyr/kernel.h>
 
 struct rtio_wm8960 {
-	struct rtio_iodev iodev;
+/*        struct rtio_iodev iodev; */
 	const struct device *i2c;
 	const struct device *i2s;
 };
 
 void wm8960_configure(struct rtio_wm8960 *wm8960,
 		      const struct device *i2c,
-		      const struct device *i2s);
+		      const struct device *i2s,
+		      uint32_t   srate,
+		      uint8_t    ch,
+		      uint32_t   ptime,
+		      int        fmt);
 
 #define WM8960_ADDR   0x1A
 #define WM8960_VMASK  0x01FF
