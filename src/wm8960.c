@@ -2,7 +2,7 @@
 #include "wm8960.h"
 #include <zephyr/drivers/i2c.h>
 #include <zephyr/drivers/i2s.h>
-#include <zephyr/kernel.h>
+#include <stdio.h>
 
 static const uint8_t wm8960_init_seq1[][2] = {
 	WM8960_PAIR(WM8960_RESET, 0),      /**< Reset to defaults */
@@ -50,35 +50,41 @@ K_MEM_SLAB_DEFINE(tx_mem_slab, 128, 4, 32);
  * @param ch     Number of channels
  * @param ptime  Wanted packet-time in [ms]
  * @param aufmt  Sample format (enum aufmt)
+ *
+ * @return 0 if success, otherwise errorcode
  */
-void wm8960_configure(struct rtio_wm8960 *wm8960,
-		      const struct device *i2c,
-		      const struct device *i2s,
-		      uint32_t   srate,
-		      uint8_t    ch,
-		      uint32_t   ptime,
-		      int        fmt)
+int wm8960_configure(struct rtio_wm8960 *wm8960,
+		     const struct device *i2c,
+		     const struct device *i2s,
+		     uint32_t   srate,
+		     uint8_t    ch,
+		     uint32_t   ptime,
+		     int        fmt)
 {
-	int ret;
+	int err;
 	const struct i2s_config* i2s_cfg1;
 	struct i2s_config i2s_cfg;
 
 	wm8960->i2c = i2c;
 	wm8960->i2s = i2s;
 
-	printk("info name: %s\n", i2c->name);
-
+	printf("info name: %s\n", i2c->name);
 	for(int i = 0; i < ARRAY_SIZE(wm8960_init_seq1); i++) {
-		ret = i2c_reg_write_byte(wm8960->i2c, WM8960_ADDR,
+		err = i2c_reg_write_byte(wm8960->i2c, WM8960_ADDR,
 					 wm8960_init_seq1[i][0],
 					 wm8960_init_seq1[i][1]);
-		printk("seq: %hhx, %hhx\n", wm8960_init_seq1[i][0],
+		printf("seq: %hhx, %hhx\n", wm8960_init_seq1[i][0],
 		       wm8960_init_seq1[i][1]);
-		if (ret < 0) {
-			printk("Initialization step %d failed with error %d\n",
-			       i, ret);
+		if (err < 0) {
+			printf("Initialization step %d failed with error %d\n",
+			       i, err);
+			err = EIO;
 		}
-		__ASSERT(ret == 0, "Failed to write out wm8960 init sequence");
+
+		if (err) {
+			printf("Failed to write out wm8960 init sequence\n");
+			return err;
+		}
 	}
 
 	i2s_cfg.word_size = 16U;
@@ -90,12 +96,14 @@ void wm8960_configure(struct rtio_wm8960 *wm8960,
 	i2s_cfg.options = I2S_OPT_FRAME_CLK_MASTER | I2S_OPT_BIT_CLK_MASTER;
 	i2s_cfg.mem_slab = &tx_mem_slab;
 
-	ret = i2s_configure(wm8960->i2s, I2S_DIR_TX, &i2s_cfg);
+	err = i2s_configure(wm8960->i2s, I2S_DIR_TX, &i2s_cfg);
 
 	i2s_cfg1 = i2s_config_get(wm8960->i2s, I2S_DIR_TX);
-	printk("word_size %d\n", i2s_cfg1->word_size);
-	printk("channels %d\n", i2s_cfg1->channels);
-	printk("frame_clk_freq %d\n", i2s_cfg1->frame_clk_freq);
-	printk("block_size %d\n", i2s_cfg1->block_size);
-	printk("timeout %d\n", i2s_cfg1->timeout);
+	printf("word_size %d\n", i2s_cfg1->word_size);
+	printf("channels %d\n", i2s_cfg1->channels);
+	printf("frame_clk_freq %d\n", i2s_cfg1->frame_clk_freq);
+	printf("block_size %d\n", i2s_cfg1->block_size);
+	printf("timeout %d\n", i2s_cfg1->timeout);
+
+	return err;
 }
